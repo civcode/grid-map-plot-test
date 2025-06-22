@@ -1,0 +1,12 @@
+free_thresh: 0.196
+image: "/home/chris/workspace/ros2-map/data/maze-1-50x50.png"
+# image: "/home/chris/workspace/ros2-map/data/maze-4-500x500.png"
+# image: "/home/chris/workspace/ros2-map/data/maze-4-1000x1000.png"
+mode: trinary
+negate: 0
+occupied_thresh: 0.65
+origin:
+- 3.0
+- 3.0
+- 0.0
+resolution: 1.0 # 1 Pixel = 1 Meter

@@ -1,0 +1,3 @@
+map_server:
+    ros__parameters:
+        yaml_filename: "/home/chris/workspace/ros2-map/data/map.yaml"
