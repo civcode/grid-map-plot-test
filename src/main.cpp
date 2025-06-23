@@ -103,7 +103,8 @@ int main() {
 
     RenderModule::RegisterNanoVGCallback("Image Viewer", [&](NVGcontext* vg) {
         // RenderModule::NanoVGZoomView([&](NVGvertex* vg));
-        ZoomView::Draw("Zoom View", vg, [&](NVGcontext* vg) {
+        // ZoomView::Draw("Zoom View", vg, [&](NVGcontext* vg) {
+        RenderModule::ZoomView([&](NVGcontext* vg) {
             nvg::SetContext(vg);
 
             nvg::BeginPath();
