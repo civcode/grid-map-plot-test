@@ -14,31 +14,8 @@
 
 int main() {
 
-
-    {
-        // RenderModule::Init(1000, 1000, 1.0);
-        // auto vg = RenderModule::GetNanoVGContext();
-        
-        // stbi_set_flip_vertically_on_load(false);
-        // int w, h, channels;
-        // unsigned char* data = stbi_load("../data/maze-1-10x10.png", &w, &h, &channels, 4); // force RGBA (4)
-        // if (!data) {
-        //     std::cerr << "xFailed to load image\n";
-        //     return 1;
-        // }
-
-        // int size = w * h * 4; // must match forced 4-channel format
-        // int img_id = nvgCreateImageMem(vg, NVG_IMAGE_FLIPY | NVG_IMAGE_NEAREST, data, size);
-
-        // // stbi_image_free(data);
- 
-        // if (img_id == 0) {
-        //     std::cerr << "xFailed to create NanoVG image\n";
-        //     return 1;
-        // }
-    }
-    // constexpr auto img_path = "../data/maze-1-10x10.png";
-    constexpr auto img_path = "../data/maze-1-100x100.png";
+    constexpr auto img_path = "../data/maze-1-10x10.png";
+    // constexpr auto img_path = "../data/maze-1-100x100.png";
     // constexpr auto img_path = "../data/maze-4-500x500.png";
     int width, height, channels;
 
@@ -50,6 +27,7 @@ int main() {
     std::unique_ptr<unsigned char, decltype(stbi_deleter)>
         data(stbi_load(img_path, &width, &height, &channels, required_channels), stbi_deleter);
     channels = required_channels;
+    
     if (!data) {
         std::cerr << "Failed to load image\n";
         return 1;
