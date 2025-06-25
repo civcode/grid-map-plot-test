@@ -73,7 +73,7 @@ int main() {
     int grid_height = height * px_per_cell;
     std::cout << "Grid size: " << grid_width << "x" << grid_height << "\n";
 
-    RenderModule::Init(1200, 1200, 0.0);
+    RenderModule::Init(1400, 1200, 0.0);
     RenderModule::EnableRootWindowDocking();
 
 
@@ -94,56 +94,111 @@ int main() {
         return -1;
     }
     // nvgImageSize(vg, fb->image, &width, &height);
-    // nvgluBindFramebuffer(fb);
-    nvg::GLUtilsBindFramebuffer(fb);
-    glad::glViewport(0, 0, fb_width, fb_height);
-    glad::glClearColor(0, 0, 0, 0);
-    glad::glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+    NVGpaint img_paint;
+    auto render_grid_map = [&]() {
+        nvg::GLUtilsBindFramebuffer(fb);
+        glad::glViewport(0, 0, fb_width, fb_height);
+        glad::glClearColor(0, 0, 0, 0);
+        glad::glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-    /* Draw Grid Map */
-    nvg::BeginFrame(fb_width, fb_height, 1.0f);
+        /* Draw Grid Map */
+        nvg::BeginFrame(fb_width, fb_height, 1.0f);
 
-        nvg::BeginPath();
-        nvg::Rect(0, 0, static_cast<float>(grid_width), static_cast<float>(grid_height));
-        nvg::FillColor(nvg::RGBAf(1.0f, 1.0f, 1.0f, 1.0f));
-        nvg::Fill();
-
-        for (int i = 0; i < width * height; ++i) {
-            int x = (i % width) * px_per_cell;
-            int y = (i / width) * px_per_cell;
-            y = grid_height - y - px_per_cell; // Invert y-axis for correct rendering
-            int8_t value = occupancy_grid.get()[i];
-            if (value == 0) {
-                continue;
-            }
             nvg::BeginPath();
-            nvg::Rect(static_cast<float>(x), static_cast<float>(y), static_cast<float>(px_per_cell), static_cast<float>(px_per_cell));
-            nvg::FillColor(nvg::RGBAf(0.6f, 0.6f, 0.6f, 1.0f));
+            nvg::Rect(0, 0, static_cast<float>(grid_width), static_cast<float>(grid_height));
+            nvg::FillColor(nvg::RGBAf(1.0f, 1.0f, 1.0f, 1.0f));
             nvg::Fill();
-        }
 
-        nvg::BeginPath();
-        // draw grid lines
-        for (int i = 0; i <= grid_width; i+=px_per_cell) {
-            nvg::MoveTo(i, 0);
-            nvg::LineTo(i, grid_height);
-        }
-        for (int i = 0; i <= grid_height; i+=px_per_cell) {
-            nvg::MoveTo(0, i);
-            nvg::LineTo(grid_width, i);
-        }
-        nvg::StrokeColor(nvg::RGBAf(0.2f, 0.2f, 0.2f, 0.6f));
-        nvg::StrokeWidth(0.8f);
-        nvg::Stroke();
+            for (int i = 0; i < width * height; ++i) {
+                int x = (i % width) * px_per_cell;
+                int y = (i / width) * px_per_cell;
+                y = grid_height - y - px_per_cell; // Invert y-axis for correct rendering
+                int8_t value = occupancy_grid.get()[i];
+                if (value == 0) {
+                    continue;
+                }
+                nvg::BeginPath();
+                nvg::Rect(static_cast<float>(x), static_cast<float>(y), static_cast<float>(px_per_cell), static_cast<float>(px_per_cell));
+                nvg::FillColor(nvg::RGBAf(0.6f, 0.6f, 0.6f, 1.0f));
+                nvg::Fill();
+            }
 
-    nvg::EndFrame();
-    nvg::GLUtilsBindFramebuffer(nullptr); 
+            nvg::BeginPath();
+            // draw grid lines
+            for (int i = 0; i <= grid_width; i+=px_per_cell) {
+                nvg::MoveTo(i, 0);
+                nvg::LineTo(i, grid_height);
+            }
+            for (int i = 0; i <= grid_height; i+=px_per_cell) {
+                nvg::MoveTo(0, i);
+                nvg::LineTo(grid_width, i);
+            }
+            nvg::StrokeColor(nvg::RGBAf(0.2f, 0.2f, 0.2f, 0.6f));
+            nvg::StrokeWidth(0.8f);
+            nvg::Stroke();
+
+        nvg::EndFrame();
+        nvg::GLUtilsBindFramebuffer(nullptr); 
+            
+        // NVGpaint img_paint = nvg::ImagePattern(0, 0, fb_width, fb_height, 0, fb->image, 1.0f);
+        img_paint = nvg::ImagePattern(0, 0, fb_width, fb_height, 0, fb->image, 1.0f);
+        if (img_paint.image == 0) {
+            std::cerr << "Failed to create image pattern." << std::endl;
+            return -1;
+        }
+        return 0;
+    };
+    render_grid_map();
+
+    // nvg::GLUtilsBindFramebuffer(fb);
+    // glad::glViewport(0, 0, fb_width, fb_height);
+    // glad::glClearColor(0, 0, 0, 0);
+    // glad::glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+    // /* Draw Grid Map */
+    // nvg::BeginFrame(fb_width, fb_height, 1.0f);
+
+    //     nvg::BeginPath();
+    //     nvg::Rect(0, 0, static_cast<float>(grid_width), static_cast<float>(grid_height));
+    //     nvg::FillColor(nvg::RGBAf(1.0f, 1.0f, 1.0f, 1.0f));
+    //     nvg::Fill();
+
+    //     for (int i = 0; i < width * height; ++i) {
+    //         int x = (i % width) * px_per_cell;
+    //         int y = (i / width) * px_per_cell;
+    //         y = grid_height - y - px_per_cell; // Invert y-axis for correct rendering
+    //         int8_t value = occupancy_grid.get()[i];
+    //         if (value == 0) {
+    //             continue;
+    //         }
+    //         nvg::BeginPath();
+    //         nvg::Rect(static_cast<float>(x), static_cast<float>(y), static_cast<float>(px_per_cell), static_cast<float>(px_per_cell));
+    //         nvg::FillColor(nvg::RGBAf(0.6f, 0.6f, 0.6f, 1.0f));
+    //         nvg::Fill();
+    //     }
+
+    //     nvg::BeginPath();
+    //     // draw grid lines
+    //     for (int i = 0; i <= grid_width; i+=px_per_cell) {
+    //         nvg::MoveTo(i, 0);
+    //         nvg::LineTo(i, grid_height);
+    //     }
+    //     for (int i = 0; i <= grid_height; i+=px_per_cell) {
+    //         nvg::MoveTo(0, i);
+    //         nvg::LineTo(grid_width, i);
+    //     }
+    //     nvg::StrokeColor(nvg::RGBAf(0.2f, 0.2f, 0.2f, 0.6f));
+    //     nvg::StrokeWidth(0.8f);
+    //     nvg::Stroke();
+
+    // nvg::EndFrame();
+    // nvg::GLUtilsBindFramebuffer(nullptr); 
         
-    NVGpaint img_paint = nvg::ImagePattern(0, 0, fb_width, fb_height, 0, fb->image, 1.0f);
-    if (img_paint.image == 0) {
-        std::cerr << "Failed to create image pattern." << std::endl;
-        return -1;
-    }
+    // NVGpaint img_paint = nvg::ImagePattern(0, 0, fb_width, fb_height, 0, fb->image, 1.0f);
+    // if (img_paint.image == 0) {
+    //     std::cerr << "Failed to create image pattern." << std::endl;
+    //     return -1;
+    // }
     
     // RenderModule::RegisterNanoVGCallback("Red Circle", [&](NVGcontext* vg) {
     //     nvgBeginPath(vg);
@@ -195,17 +250,26 @@ int main() {
     std::uniform_real_distribution<float> dist(0.0f, static_cast<float>(fb_width));
 
     float test = 0.5f;
-    bool toggle = true;
+    bool toggle = false;
     int count = 1;
+    int square_count = 0;
+    bool step = false;
 
     RenderModule::RegisterImGuiCallback([&]() {
         ImGui::Begin("Controls");
-        ImGui::Text("Grid Map Metadata:");
+        // ImGui::Text("Grid Map Metadata:");
         ImGui::SliderFloat("Test", &test, 0.0f, 1.0f);
-        ImGui::SliderInt("count", &count, 1, 100);
+        ImGui::SliderInt("count", &count, 1, 10000);
         //create on off button
-        if (ImGui::Button(toggle ? "ON" : "OFF")) {
+        if (ImGui::Button(toggle ? "STOP" : "RUN")) {
             toggle = !toggle;
+        }
+        if (ImGui::Button("Step")) {
+            step = !step;
+        }
+        if (ImGui::Button("Reset")) {
+            square_count = 0;
+            render_grid_map();
         }
         ImGui::End();
 
@@ -227,6 +291,7 @@ int main() {
         ImGui::Text("Grid Map Metadata:");
         ImGui::Text("Width: %d, Height: %d, Resolution: %.2f m/pixel", map_metadata.width, map_metadata.height, map_metadata.resolution);
         ImGui::Text("Origin: (%.2f, %.2f)", map_metadata.origin_x, map_metadata.origin_y);
+        ImGui::Text("Square count: %d", square_count);
         ImGui::Text(" ");
         ImGui::End();
     });
@@ -244,19 +309,21 @@ int main() {
         /* Offscreen Render */
         [&](NVGcontext* vg) {
             RenderModule::IsolatedFrameBuffer([&](NVGcontext* vg) {
-                if (toggle) {
+                if (toggle || step) {
                     nvg::GLUtilsBindFramebuffer(fb);
                     glad::glViewport(0, 0, fb_width, fb_height);
 
                     nvg::BeginFrame(fb_width, fb_height, 1.0f);
                     nvg::BeginPath();
                     for (int i = 0; i < count; ++i) {
-                        nvg::Rect(std::floor(dist(gen)), std::floor(dist(gen)), px_per_cell, px_per_cell);
+                        nvg::Rect(std::floor(dist(gen)), std::floor(dist(gen)), px_per_cell*test, px_per_cell*test);
+                        square_count++;
                     }
                     nvg::FillColor(nvg::RGBAf(1.0f, 0.0f, 0.0f, 1.0f));
                     nvg::Fill();
                     nvg::EndFrame();
                     nvg::GLUtilsBindFramebuffer(nullptr);
+                    step = false;
                 }
             });
         }
