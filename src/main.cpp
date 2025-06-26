@@ -15,6 +15,84 @@
 
 #include "render_module/render_module.hpp" 
 
+
+
+enum class PoseInteractionState {
+    kInactive,
+    kAwaitingStartClick,
+    kAwaitingDragDirection,
+    kComplete
+};
+
+struct Pose {
+    bool active = false;
+    float x = 0.0f;
+    float y = 0.0f;
+    float dx = 0.0f;
+    float dy = 0.0f;
+    float theta = 0.0f;
+};
+
+
+bool HandlePoseInteractionStateMachine(Pose& pose,
+                                       PoseInteractionState& state,
+                                       const ImVec2& canvasPos,
+                                       const ImVec2& canvasSize)
+{
+    bool interactionComplete = false;
+
+    if (state != PoseInteractionState::kInactive) {
+
+        ImVec2 cursorBackup = ImGui::GetCursorPos();
+        ImGui::SetCursorScreenPos(canvasPos);
+        ImGui::InvisibleButton("##PoseInteraction", canvasSize,
+            ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
+        ImGui::SetCursorPos(cursorBackup);
+
+        bool hovering = ImGui::IsItemHovered();
+        bool active = ImGui::IsItemActive();
+        ImVec2 mousePos = ImGui::GetIO().MousePos;
+        ImVec2 delta = ImGui::GetIO().MouseDelta;
+
+        switch (state) {
+            case PoseInteractionState::kInactive:
+                // Do nothing unless externally activated
+                break;
+
+            case PoseInteractionState::kAwaitingStartClick:
+                if (hovering && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                    pose.x = mousePos.x - canvasPos.x;
+                    pose.y = canvasSize.y - (mousePos.y - canvasPos.y);  // Flip Y
+                    pose.dx = 0.0f;
+                    pose.dy = 0.0f;
+                    state = PoseInteractionState::kAwaitingDragDirection;
+                }
+                break;
+
+            case PoseInteractionState::kAwaitingDragDirection:
+                if (hovering && active && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+                    pose.dx += delta.x;
+                    pose.dy -= delta.y;  // Flip Y
+                }
+
+                if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
+                    state = PoseInteractionState::kComplete;
+                    interactionComplete = true;
+                    pose.active = true;  // Mark pose as active
+                }
+                break;
+
+            case PoseInteractionState::kComplete:
+                // Optional: reset or wait for external signal
+                break;
+        }
+    }
+
+    return interactionComplete;
+}
+
+
+
 int main() {
 
     // constexpr auto img_path = "../data/maze-1-10x10.png";
@@ -255,11 +333,15 @@ int main() {
     int square_count = 0;
     bool step = false;
 
+    Pose start;
+    Pose stop;
+    PoseInteractionState pose_interaction_state = PoseInteractionState::kInactive;
+
     RenderModule::RegisterImGuiCallback([&]() {
         ImGui::Begin("Controls");
         // ImGui::Text("Grid Map Metadata:");
         ImGui::SliderFloat("Test", &test, 0.0f, 1.0f);
-        ImGui::SliderInt("count", &count, 1, 10000);
+        ImGui::SliderInt("count", &count, 1, 1000);
         //create on off button
         if (ImGui::Button(toggle ? "STOP" : "RUN")) {
             toggle = !toggle;
@@ -270,6 +352,14 @@ int main() {
         if (ImGui::Button("Reset")) {
             square_count = 0;
             render_grid_map();
+        }
+        if (ImGui::Button("Start Pose")) {
+            pose_interaction_state = PoseInteractionState::kAwaitingStartClick;
+            // start = Pose(); // Reset start pose
+            RenderContext::Instance().disableViewportControls = true;
+        }
+        if (ImGui::Button("End Pose")) {
+            // Start pose logic here
         }
         ImGui::End();
 
@@ -299,12 +389,105 @@ int main() {
     RenderModule::RegisterNanoVGCallback("Grid Map Viewer", 
         /* Render */
         [&](NVGcontext* vg) {
+            ImVec2 canvasPos = ImGui::GetCursorScreenPos();
+            ImVec2 canvasSize = ImGui::GetContentRegionAvail();
+            bool pose_set = HandlePoseInteractionStateMachine(start, pose_interaction_state, canvasPos, canvasSize);
+            if (pose_set) {
+                pose_interaction_state = PoseInteractionState::kInactive;
+                RenderContext::Instance().disableViewportControls = false;
+                std::cout << "Start Pose Set: (" << start.x << ", " << start.y << ", " << start.dx << ", " << start.dy << ")\n";
+
+            }
+
+
+
+
+
+            // if (pose_interaction_state != PoseInteractionState::kInactive) {
+
+            //     ImVec2 canvasPos = ImGui::GetCursorScreenPos();
+            //     ImVec2 canvasSize = ImGui::GetContentRegionAvail();
+
+            //     ImVec2 cursorBackup = ImGui::GetCursorPos();
+
+            //     ImGui::SetCursorScreenPos(canvasPos);
+            //     ImGui::InvisibleButton("##MyBtn_1", canvasSize,
+            //         ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
+
+            //     ImGui::SetCursorPos(cursorBackup);
+
+            //     bool hovering = ImGui::IsItemHovered();
+            //     bool active = ImGui::IsItemActive();  
+            //     ImVec2 delta = ImGui::GetIO().MouseDelta;
+
+            //     std::cout << "Hovering: " << hovering << std::endl;
+            //     std::cout << "Active: " << active << std::endl; 
+            //     std::cout << "Mouse Delta: (" << delta.x << ", " << delta.y << ")" << std::endl;
+
+            //     if (hovering && active && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+            //         start.dx += delta.x;
+            //         start.dy -= delta.y; // Flip Y for NanoVG
+            //     }
+            //     std::cout << "Start Pose Delta: (" << start.dx << ", " << start.dy << ")" << std::endl;
+
+            //     if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+            //         start.x = ImGui::GetIO().MousePos.x - canvasPos.x;
+            //         start.y = canvasSize.y - (ImGui::GetIO().MousePos.y - canvasPos.y);
+            //         start.dx = 0.0f;
+            //         start.dy = 0.0f;
+            //     }
+            //     start.theta = std::atan2(start.dy, start.dx);
+
+            //     std::cout << "Start Pose: (" << start.x << ", " << start.y << ", " << start.theta << ")" << std::endl;
+
+            // }
             RenderModule::ZoomView([&](NVGcontext* vg) {
                 nvg::BeginPath();
                 nvg::Rect(0, 0, fb_width, fb_height);
                 nvg::FillPaint(img_paint);
                 nvg::Fill();
+
+                float scale = ZoomView::GetScale();
+                ImVec2 offset = ZoomView::GetOffset();
+                std::cout << "Zoom Scale: " << scale << ", Offset: (" << offset.x << ", " << offset.y << ")\n";
+
+                Pose backup = start;
+                // if (pose_interaction_state == PoseInteractionState::kAwaitingDragDirection ||
+                    // pose_interaction_state == PoseInteractionState::kAwaitingStartClick) {
+                    
+                    start.x = (start.x - offset.x) * scale;
+                    start.y = (start.y - offset.y) * scale;
+                    start.dx *= scale;
+                    start.dy *= scale;
+                // }
+
+
+            if (pose_interaction_state == PoseInteractionState::kAwaitingDragDirection ||
+                pose_interaction_state == PoseInteractionState::kComplete || 
+                start.active) {
+                nvg::BeginPath();
+                nvg::MoveTo(start.x, start.y);
+                nvg::LineTo(start.x + start.dx, start.y + start.dy);
+                nvg::StrokeColor(nvg::RGBAf(0.3f, 0.3f, 0.3f, 1.0f));
+                nvg::StrokeWidth(2.0f);
+                nvg::Stroke();
+                // nvg::BeginPath();
+                // nvg::Circle(start.x, start.y, 5.0f);
+                // nvg::FillColor(nvg::RGBAf(0.3f, 0.3f, 0.3f, 1.0f));
+                // nvg::Fill();
+                nvg::BeginPath();
+                // nvg::Circle(start.x + start.dx, start.y + start.dy, 5.0f);
+                nvg::Circle(start.x, start.y, 5.0f);
+                // nvg::ClosePath();
+                nvg::FillColor(nvg::RGBAf(0.0f, 1.0f, 0.0f, 1.0f));
+                nvg::Fill();
+            }
+                start = backup;
             });
+
+            // RenderModule::ZoomView([&](NVGcontext* vg) {
+            // });
+
         },
         /* Offscreen Render */
         [&](NVGcontext* vg) {
@@ -316,7 +499,12 @@ int main() {
                     nvg::BeginFrame(fb_width, fb_height, 1.0f);
                     nvg::BeginPath();
                     for (int i = 0; i < count; ++i) {
-                        nvg::Rect(std::floor(dist(gen)), std::floor(dist(gen)), px_per_cell*test, px_per_cell*test);
+                        // nvg::Rect(std::floor(dist(gen)), std::floor(dist(gen)), px_per_cell*test, px_per_cell*test);
+                        int x = static_cast<int>(dist(gen));
+                        int y = static_cast<int>(dist(gen));
+                        x /= 10;
+                        y /= 10;
+                        nvg::Rect(x*10, y*10, px_per_cell*test, px_per_cell*test);
                         square_count++;
                     }
                     nvg::FillColor(nvg::RGBAf(1.0f, 0.0f, 0.0f, 1.0f));
