@@ -31,7 +31,9 @@ struct Pose {
     float dx = 0.0f;
     float dy = 0.0f;
     float theta = 0.0f;
+    bool transformed = false;
 };
+
 
 
 bool HandlePoseInteractionStateMachine(Pose& pose,
@@ -61,10 +63,13 @@ bool HandlePoseInteractionStateMachine(Pose& pose,
 
             case PoseInteractionState::kAwaitingStartClick:
                 if (hovering && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+                    pose.active = false;
+                    pose.transformed = false;
                     pose.x = mousePos.x - canvasPos.x;
                     pose.y = canvasSize.y - (mousePos.y - canvasPos.y);  // Flip Y
                     pose.dx = 0.0f;
                     pose.dy = 0.0f;
+
                     state = PoseInteractionState::kAwaitingDragDirection;
                 }
                 break;
@@ -83,8 +88,32 @@ bool HandlePoseInteractionStateMachine(Pose& pose,
                 break;
 
             case PoseInteractionState::kComplete:
+                pose.active = true;  
                 // Optional: reset or wait for external signal
                 break;
+        }
+
+        if (state == PoseInteractionState::kAwaitingDragDirection) {
+            // std::cout << "Dragging direction: (" 
+                    //   << pose.dx << ", " << pose.dy << ")\n";
+            // Draw the pose direction lineoL
+            // nvg::BeginPath();
+            // nvg::MoveTo(pose.x, pose.y);
+            // nvg::LineTo(pose.x + pose.dx, pose.y + pose.dy);
+            // nvg::StrokeColor(nvg::RGBAf(0.3f, 0.3f, 0.3f, 1.0f));
+            // nvg::StrokeWidth(2.0f);
+            // nvg::Stroke();
+            // // nvg::BeginPath();
+            // // nvg::Circle(start.x, start.y, 5.0f);
+            // // nvg::FillColor(nvg::RGBAf(0.3f, 0.3f, 0.3f, 1.0f));
+            // // nvg::Fill();
+            // nvg::BeginPath();
+            // // nvg::Circle(start.x + start.dx, start.y + start.dy, 5.0f);
+            // nvg::Circle(pose.x, pose.y, 5.0f);
+            // // nvg::ClosePath();
+            // nvg::FillColor(nvg::RGBAf(0.0f, 1.0f, 0.0f, 1.0f));
+            // nvg::Fill();
+
         }
     }
 
@@ -173,14 +202,16 @@ int main() {
     }
     // nvgImageSize(vg, fb->image, &width, &height);
     NVGpaint img_paint;
-    auto render_grid_map = [&]() {
-        nvg::GLUtilsBindFramebuffer(fb);
-        glad::glViewport(0, 0, fb_width, fb_height);
-        glad::glClearColor(0, 0, 0, 0);
-        glad::glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+    auto render_grid_map = [&](bool offscreen = true) {
+        if (offscreen) {
+            nvg::GLUtilsBindFramebuffer(fb);
+            glad::glViewport(0, 0, fb_width, fb_height);
+            glad::glClearColor(0, 0, 0, 0);
+            glad::glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-        /* Draw Grid Map */
-        nvg::BeginFrame(fb_width, fb_height, 1.0f);
+            /* Draw Grid Map */
+            nvg::BeginFrame(fb_width, fb_height, 1.0f);
+        }
 
             nvg::BeginPath();
             nvg::Rect(0, 0, static_cast<float>(grid_width), static_cast<float>(grid_height));
@@ -214,15 +245,17 @@ int main() {
             nvg::StrokeColor(nvg::RGBAf(0.2f, 0.2f, 0.2f, 0.6f));
             nvg::StrokeWidth(0.8f);
             nvg::Stroke();
-
-        nvg::EndFrame();
-        nvg::GLUtilsBindFramebuffer(nullptr); 
-            
-        // NVGpaint img_paint = nvg::ImagePattern(0, 0, fb_width, fb_height, 0, fb->image, 1.0f);
-        img_paint = nvg::ImagePattern(0, 0, fb_width, fb_height, 0, fb->image, 1.0f);
-        if (img_paint.image == 0) {
-            std::cerr << "Failed to create image pattern." << std::endl;
-            return -1;
+        
+        if (offscreen) {
+            nvg::EndFrame();
+            nvg::GLUtilsBindFramebuffer(nullptr); 
+                
+            // NVGpaint img_paint = nvg::ImagePattern(0, 0, fb_width, fb_height, 0, fb->image, 1.0f);
+            img_paint = nvg::ImagePattern(0, 0, fb_width, fb_height, 0, fb->image, 1.0f);
+            if (img_paint.image == 0) {
+                std::cerr << "Failed to create image pattern." << std::endl;
+                return -1;
+            }
         }
         return 0;
     };
@@ -326,6 +359,7 @@ int main() {
     std::mt19937 gen(rd());
     // std::uniform_real_distribution<float> dist(0.0f, std::static_cast<float>(fb_width));
     std::uniform_real_distribution<float> dist(0.0f, static_cast<float>(fb_width));
+    // std::uniform_real_distribution<float> dist(0.0f, static_cast<float>(10));
 
     float test = 0.5f;
     bool toggle = false;
@@ -382,6 +416,7 @@ int main() {
         ImGui::Text("Width: %d, Height: %d, Resolution: %.2f m/pixel", map_metadata.width, map_metadata.height, map_metadata.resolution);
         ImGui::Text("Origin: (%.2f, %.2f)", map_metadata.origin_x, map_metadata.origin_y);
         ImGui::Text("Square count: %d", square_count);
+        ImGui::Text("FPS: %.2f", RenderModule::GetFPS());
         ImGui::Text(" ");
         ImGui::End();
     });
@@ -389,6 +424,8 @@ int main() {
     RenderModule::RegisterNanoVGCallback("Grid Map Viewer", 
         /* Render */
         [&](NVGcontext* vg) {
+            // std::cout << "fps = " << RenderModule::GetFPS() << std::endl;
+
             ImVec2 canvasPos = ImGui::GetCursorScreenPos();
             ImVec2 canvasSize = ImGui::GetContentRegionAvail();
             bool pose_set = HandlePoseInteractionStateMachine(start, pose_interaction_state, canvasPos, canvasSize);
@@ -399,121 +436,108 @@ int main() {
 
             }
 
-
-
-
-
-            // if (pose_interaction_state != PoseInteractionState::kInactive) {
-
-            //     ImVec2 canvasPos = ImGui::GetCursorScreenPos();
-            //     ImVec2 canvasSize = ImGui::GetContentRegionAvail();
-
-            //     ImVec2 cursorBackup = ImGui::GetCursorPos();
-
-            //     ImGui::SetCursorScreenPos(canvasPos);
-            //     ImGui::InvisibleButton("##MyBtn_1", canvasSize,
-            //         ImGuiButtonFlags_MouseButtonLeft | ImGuiButtonFlags_MouseButtonRight);
-
-            //     ImGui::SetCursorPos(cursorBackup);
-
-            //     bool hovering = ImGui::IsItemHovered();
-            //     bool active = ImGui::IsItemActive();  
-            //     ImVec2 delta = ImGui::GetIO().MouseDelta;
-
-            //     std::cout << "Hovering: " << hovering << std::endl;
-            //     std::cout << "Active: " << active << std::endl; 
-            //     std::cout << "Mouse Delta: (" << delta.x << ", " << delta.y << ")" << std::endl;
-
-            //     if (hovering && active && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
-            //         start.dx += delta.x;
-            //         start.dy -= delta.y; // Flip Y for NanoVG
-            //     }
-            //     std::cout << "Start Pose Delta: (" << start.dx << ", " << start.dy << ")" << std::endl;
-
-            //     if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-            //         start.x = ImGui::GetIO().MousePos.x - canvasPos.x;
-            //         start.y = canvasSize.y - (ImGui::GetIO().MousePos.y - canvasPos.y);
-            //         start.dx = 0.0f;
-            //         start.dy = 0.0f;
-            //     }
-            //     start.theta = std::atan2(start.dy, start.dx);
-
-            //     std::cout << "Start Pose: (" << start.x << ", " << start.y << ", " << start.theta << ")" << std::endl;
-
-            // }
             RenderModule::ZoomView([&](NVGcontext* vg) {
-                nvg::BeginPath();
-                nvg::Rect(0, 0, fb_width, fb_height);
-                nvg::FillPaint(img_paint);
-                nvg::Fill();
-
-                float scale = ZoomView::GetScale();
-                ImVec2 offset = ZoomView::GetOffset();
-                std::cout << "Zoom Scale: " << scale << ", Offset: (" << offset.x << ", " << offset.y << ")\n";
-
-                Pose backup = start;
-                // if (pose_interaction_state == PoseInteractionState::kAwaitingDragDirection ||
-                    // pose_interaction_state == PoseInteractionState::kAwaitingStartClick) {
-                    
-                    start.x = (start.x - offset.x) * scale;
-                    start.y = (start.y - offset.y) * scale;
-                    start.dx *= scale;
-                    start.dy *= scale;
-                // }
+                /* Render Pre-Computed Background */
+                // nvg::BeginPath();
+                // nvg::Rect(0, 0, fb_width, fb_height);
+                // nvg::FillPaint(img_paint);
+                // nvg::Fill();
+                render_grid_map(false);
 
 
-            if (pose_interaction_state == PoseInteractionState::kAwaitingDragDirection ||
-                pose_interaction_state == PoseInteractionState::kComplete || 
-                start.active) {
+                /* Transform once from canvas to view */
+                if (start.active && !start.transformed) {
+                    std::cout << "Transforming start pose to view coordinates.\n";
+                    ZoomView::CanvasToView(start.x, start.y);
+                    ZoomView::CanvasToView(start.dx);
+                    ZoomView::CanvasToView(start.dy);
+                    start.transformed = true;
+                }
+
+
+            if (start.transformed) {
                 nvg::BeginPath();
                 nvg::MoveTo(start.x, start.y);
                 nvg::LineTo(start.x + start.dx, start.y + start.dy);
                 nvg::StrokeColor(nvg::RGBAf(0.3f, 0.3f, 0.3f, 1.0f));
                 nvg::StrokeWidth(2.0f);
                 nvg::Stroke();
-                // nvg::BeginPath();
-                // nvg::Circle(start.x, start.y, 5.0f);
-                // nvg::FillColor(nvg::RGBAf(0.3f, 0.3f, 0.3f, 1.0f));
-                // nvg::Fill();
                 nvg::BeginPath();
-                // nvg::Circle(start.x + start.dx, start.y + start.dy, 5.0f);
                 nvg::Circle(start.x, start.y, 5.0f);
-                // nvg::ClosePath();
                 nvg::FillColor(nvg::RGBAf(0.0f, 1.0f, 0.0f, 1.0f));
                 nvg::Fill();
             }
-                start = backup;
+
+            static std::vector<float> x_coords;
+            static std::vector<float> y_coords;
+            if (toggle || step) {
+                // nvg::GLUtilsBindFramebuffer(fb);
+                // glad::glViewport(0, 0, fb_width, fb_height);
+
+                // nvg::BeginFrame(fb_width, fb_height, 1.0f);
+
+                for (int i = 0; i < count; ++i) {
+                    x_coords.emplace_back(dist(gen));
+                    y_coords.emplace_back(dist(gen));
+                    square_count++;
+                }
+                // nvg::EndFrame();
+                // nvg::GLUtilsBindFramebuffer(nullptr);
+                step = false;
+            }
+            for (int i = 0; i < x_coords.size(); ++i) {
+                nvg::BeginPath();
+                nvg::Rect(x_coords[i], y_coords[i], px_per_cell*test, px_per_cell*test);
+                nvg::FillColor(nvg::RGBAf(1.0f, 0.0f, 0.0f, 1.0f));
+                nvg::Fill();
+            }
+
             });
 
-            // RenderModule::ZoomView([&](NVGcontext* vg) {
-            // });
+
+            /* Paint orientation during interactions */
+            if (pose_interaction_state == PoseInteractionState::kAwaitingDragDirection) {
+                nvg::BeginPath();
+                nvg::MoveTo(start.x, start.y);
+                nvg::LineTo(start.x + start.dx, start.y + start.dy);
+                nvg::StrokeColor(nvg::RGBAf(0.3f, 0.3f, 0.3f, 1.0f));
+                nvg::StrokeWidth(2.0f);
+                nvg::Stroke();
+                nvg::BeginPath();
+                nvg::Circle(start.x, start.y, 5.0f);
+                nvg::FillColor(nvg::RGBAf(0.0f, 1.0f, 0.0f, 1.0f));
+                nvg::Fill();
+            }
+
+            // std::cout << "Pose Interaction State: " << static_cast<int>(pose_interaction_state) << "\n";
+
 
         },
         /* Offscreen Render */
         [&](NVGcontext* vg) {
-            RenderModule::IsolatedFrameBuffer([&](NVGcontext* vg) {
-                if (toggle || step) {
-                    nvg::GLUtilsBindFramebuffer(fb);
-                    glad::glViewport(0, 0, fb_width, fb_height);
+            // RenderModule::IsolatedFrameBuffer([&](NVGcontext* vg) {
+            //     if (toggle || step) {
+            //         nvg::GLUtilsBindFramebuffer(fb);
+            //         glad::glViewport(0, 0, fb_width, fb_height);
 
-                    nvg::BeginFrame(fb_width, fb_height, 1.0f);
-                    nvg::BeginPath();
-                    for (int i = 0; i < count; ++i) {
-                        // nvg::Rect(std::floor(dist(gen)), std::floor(dist(gen)), px_per_cell*test, px_per_cell*test);
-                        int x = static_cast<int>(dist(gen));
-                        int y = static_cast<int>(dist(gen));
-                        x /= 10;
-                        y /= 10;
-                        nvg::Rect(x*10, y*10, px_per_cell*test, px_per_cell*test);
-                        square_count++;
-                    }
-                    nvg::FillColor(nvg::RGBAf(1.0f, 0.0f, 0.0f, 1.0f));
-                    nvg::Fill();
-                    nvg::EndFrame();
-                    nvg::GLUtilsBindFramebuffer(nullptr);
-                    step = false;
-                }
-            });
+            //         nvg::BeginFrame(fb_width, fb_height, 1.0f);
+            //         nvg::BeginPath();
+            //         for (int i = 0; i < count; ++i) {
+            //             // nvg::Rect(std::floor(dist(gen)), std::floor(dist(gen)), px_per_cell*test, px_per_cell*test);
+            //             int x = static_cast<int>(dist(gen));
+            //             int y = static_cast<int>(dist(gen));
+            //             x /= 10;
+            //             y /= 10;
+            //             nvg::Rect(x*10, y*10, px_per_cell*test, px_per_cell*test);
+            //             square_count++;
+            //         }
+            //         nvg::FillColor(nvg::RGBAf(1.0f, 0.0f, 0.0f, 1.0f));
+            //         nvg::Fill();
+            //         nvg::EndFrame();
+            //         nvg::GLUtilsBindFramebuffer(nullptr);
+            //         step = false;
+            //     }
+            // });
         }
     );
 
