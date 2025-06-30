@@ -371,6 +371,19 @@ int main() {
     Pose stop;
     PoseInteractionState pose_interaction_state = PoseInteractionState::kInactive;
 
+    auto paint_pose = [&](NVGcontext* vg, const Pose& pose) {
+        nvg::BeginPath();
+        nvg::MoveTo(pose.x, pose.y);
+        nvg::LineTo(pose.x + pose.dx, pose.y + pose.dy);
+        nvg::StrokeColor(nvg::RGBAf(0.3f, 0.3f, 0.3f, 1.0f));
+        nvg::StrokeWidth(2.0f);
+        nvg::Stroke();
+        nvg::BeginPath();
+        nvg::Circle(pose.x, pose.y, 5.0f);
+        nvg::FillColor(nvg::RGBAf(0.0f, 1.0f, 0.0f, 1.0f));
+        nvg::Fill();
+    };
+
     RenderModule::RegisterImGuiCallback([&]() {
         ImGui::Begin("Controls");
         // ImGui::Text("Grid Map Metadata:");
@@ -444,7 +457,6 @@ int main() {
                 // nvg::Fill();
                 render_grid_map(false);
 
-
                 /* Transform once from canvas to view */
                 if (start.active && !start.transformed) {
                     std::cout << "Transforming start pose to view coordinates.\n";
@@ -452,64 +464,46 @@ int main() {
                     ZoomView::CanvasToView(start.dx);
                     ZoomView::CanvasToView(start.dy);
                     start.transformed = true;
+                    std::cout << "Transformed Start Pose: (" 
+                              << start.x << ", " << start.y << ", " 
+                              << start.dx << ", " << start.dy << ")\n";
                 }
 
-
-            if (start.transformed) {
-                nvg::BeginPath();
-                nvg::MoveTo(start.x, start.y);
-                nvg::LineTo(start.x + start.dx, start.y + start.dy);
-                nvg::StrokeColor(nvg::RGBAf(0.3f, 0.3f, 0.3f, 1.0f));
-                nvg::StrokeWidth(2.0f);
-                nvg::Stroke();
-                nvg::BeginPath();
-                nvg::Circle(start.x, start.y, 5.0f);
-                nvg::FillColor(nvg::RGBAf(0.0f, 1.0f, 0.0f, 1.0f));
-                nvg::Fill();
-            }
-
-            static std::vector<float> x_coords;
-            static std::vector<float> y_coords;
-            if (toggle || step) {
-                // nvg::GLUtilsBindFramebuffer(fb);
-                // glad::glViewport(0, 0, fb_width, fb_height);
-
-                // nvg::BeginFrame(fb_width, fb_height, 1.0f);
-
-                for (int i = 0; i < count; ++i) {
-                    x_coords.emplace_back(dist(gen));
-                    y_coords.emplace_back(dist(gen));
-                    square_count++;
+                if (start.transformed) {
+                    paint_pose(vg, start);
                 }
-                // nvg::EndFrame();
-                // nvg::GLUtilsBindFramebuffer(nullptr);
-                step = false;
-            }
-            for (int i = 0; i < x_coords.size(); ++i) {
-                nvg::BeginPath();
-                nvg::Rect(x_coords[i], y_coords[i], px_per_cell*test, px_per_cell*test);
-                nvg::FillColor(nvg::RGBAf(1.0f, 0.0f, 0.0f, 1.0f));
-                nvg::Fill();
-            }
+
+                static std::vector<float> x_coords;
+                static std::vector<float> y_coords;
+                if (toggle || step) {
+                    // nvg::GLUtilsBindFramebuffer(fb);
+                    // glad::glViewport(0, 0, fb_width, fb_height);
+
+                    // nvg::BeginFrame(fb_width, fb_height, 1.0f);
+
+                    for (int i = 0; i < count; ++i) {
+                        x_coords.emplace_back(dist(gen));
+                        y_coords.emplace_back(dist(gen));
+                        square_count++;
+                    }
+                    // nvg::EndFrame();
+                    // nvg::GLUtilsBindFramebuffer(nullptr);
+                    step = false;
+                }
+                for (int i = 0; i < x_coords.size(); ++i) {
+                    nvg::BeginPath();
+                    nvg::Rect(x_coords[i], y_coords[i], px_per_cell*test, px_per_cell*test);
+                    nvg::FillColor(nvg::RGBAf(1.0f, 0.0f, 0.0f, 1.0f));
+                    nvg::Fill();
+                }
 
             });
 
-
             /* Paint orientation during interactions */
             if (pose_interaction_state == PoseInteractionState::kAwaitingDragDirection) {
-                nvg::BeginPath();
-                nvg::MoveTo(start.x, start.y);
-                nvg::LineTo(start.x + start.dx, start.y + start.dy);
-                nvg::StrokeColor(nvg::RGBAf(0.3f, 0.3f, 0.3f, 1.0f));
-                nvg::StrokeWidth(2.0f);
-                nvg::Stroke();
-                nvg::BeginPath();
-                nvg::Circle(start.x, start.y, 5.0f);
-                nvg::FillColor(nvg::RGBAf(0.0f, 1.0f, 0.0f, 1.0f));
-                nvg::Fill();
+                paint_pose(vg, start);
             }
 
-            // std::cout << "Pose Interaction State: " << static_cast<int>(pose_interaction_state) << "\n";
 
 
         },
