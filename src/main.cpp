@@ -280,24 +280,27 @@ int main() {
         ImGui::SliderFloat("Test", &test, 0.0f, 1.0f);
         ImGui::SliderInt("count", &count, 1, 1000);
         //create on off button
-        if (ImGui::Button(toggle ? "STOP" : "RUN")) {
+        ImVec2 buttonSize(100, 0);
+        // ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(10, 6));
+        if (ImGui::Button(toggle ? "STOP" : "RUN", buttonSize)) {
             toggle = !toggle;
         }
-        if (ImGui::Button("Step")) {
+        if (ImGui::Button("Step", buttonSize)) {
             step = !step;
         }
-        if (ImGui::Button("Reset")) {
+        if (ImGui::Button("Reset", buttonSize)) {
             square_count = 0;
             render_grid_map();
         }
-        if (ImGui::Button("Start Pose")) {
+        if (ImGui::Button("Start Pose", buttonSize)) {
             pose_start_interaction_state = PoseInteractionState::kAwaitingStartClick;
             RenderContext::Instance().disableViewportControls = true;
         }
-        if (ImGui::Button("End Pose")) {
+        if (ImGui::Button("End Pose", buttonSize)) {
             pose_end_interaction_state = PoseInteractionState::kAwaitingStartClick;
             RenderContext::Instance().disableViewportControls = true;
         }
+        // ImGui::PopStyleVar();
         ImGui::End();
 
         // ImGui::Begin("Main Text Window", nullptr);
