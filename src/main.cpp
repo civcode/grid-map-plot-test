@@ -9,6 +9,7 @@
 
 #include "render_module/render_module.hpp" 
 #include "render_module/glad_wrapper.hpp"
+#include "a_star.hpp"
 
 
 enum class PoseInteractionState {
@@ -156,7 +157,7 @@ int main() {
     int grid_height = height * px_per_cell;
     std::cout << "Grid size: " << grid_width << "x" << grid_height << "\n";
 
-    RenderModule::Init(1500, 1200, 0.0);
+    RenderModule::Init(1500, 1200, 2.0);
     RenderModule::EnableRootWindowDocking();
     RenderModule::EnableDebugConsole();
     RenderModule::Console().SetCoutRedirect(true);
@@ -245,6 +246,8 @@ int main() {
     // std::uniform_real_distribution<float> dist(0.0f, std::static_cast<float>(fb_width));
     std::uniform_real_distribution<float> dist(0.0f, static_cast<float>(fb_width));
     // std::uniform_real_distribution<float> dist(0.0f, static_cast<float>(10));
+    std::vector<float> x_coords;
+    std::vector<float> y_coords;
 
     float test = 0.5f;
     bool toggle = false;
@@ -273,15 +276,43 @@ int main() {
         }
         nvg::Fill();
     };
+    
+    auto run_a_star = [&]() {
+        std::cout << "Running A* algorithm...\n";
+        astar::Point this_start(static_cast<int>(start.x / px_per_cell), static_cast<int>(start.y / px_per_cell));
+        astar::Point this_end(static_cast<int>(end.x / px_per_cell), static_cast<int>(end.y / px_per_cell));
+        std::cout << "Start Point: (" << this_start.x << ", " << this_start.y << ")\n";
+        std::cout << "End Point: (" << this_end.x << ", " << this_end.y << ")\n";
+        astar::AStar a_star(map_metadata.width, map_metadata.height, this_start, this_end);
+        for (int i = 0; i < map_metadata.width*map_metadata.height; ++i) {
+            if (occupancy_grid[i] != 0) {
+                int x = i % map_metadata.width;
+                int y = i / map_metadata.width;
+                a_star.setWall(x, 100-y);
+                // std::cout << "Setting wall at (" << x << ", " << y << ")\n";
+            }
+        }
+        std::vector<astar::Point> path = a_star.findPath();
+        std::cout << "A* Path found with " << path.size() << " points.\n";
+        // start.active = false;
+        // end.active = false;
+        if (!path.empty()) {
+            nvg::BeginPath();
+            nvg::MoveTo(path.front().x*px_per_cell + 0.5f*px_per_cell, (path.front().y)*px_per_cell + 0.5f*px_per_cell);
+            for (const auto& point : path) {
+                nvg::LineTo(point.x*px_per_cell + 0.5f*px_per_cell, point.y*px_per_cell + 0.5f*px_per_cell);
+            }
+            nvg::StrokeColor(nvg::RGBAf(0.0f, 0.0f, 1.0f, 1.0f));
+            nvg::StrokeWidth(2.0f);
+            nvg::Stroke();
+        }
+    };
 
     RenderModule::RegisterImGuiCallback([&]() {
         ImGui::Begin("Controls");
-        // ImGui::Text("Grid Map Metadata:");
         ImGui::SliderFloat("Test", &test, 0.0f, 1.0f);
         ImGui::SliderInt("count", &count, 1, 1000);
-        //create on off button
         ImVec2 buttonSize(100, 0);
-        // ImGui::PushStyleVar(ImGuiStyleVar_ButtonTextAlign, ImVec2(10, 6));
         if (ImGui::Button(toggle ? "STOP" : "RUN", buttonSize)) {
             toggle = !toggle;
         }
@@ -290,6 +321,8 @@ int main() {
         }
         if (ImGui::Button("Reset", buttonSize)) {
             square_count = 0;
+            x_coords.clear();
+            y_coords.clear();
             render_grid_map();
         }
         if (ImGui::Button("Start Pose", buttonSize)) {
@@ -300,31 +333,13 @@ int main() {
             pose_end_interaction_state = PoseInteractionState::kAwaitingStartClick;
             RenderContext::Instance().disableViewportControls = true;
         }
-        // ImGui::PopStyleVar();
         ImGui::End();
-
-        // ImGui::Begin("Main Text Window", nullptr);
-        // ImGui::Begin("Main Text Window");
-        // ImGui::TextWrapped(
-        //     "CJK text will only appear if the font was loaded with the appropriate CJK character ranges. "
-        //     "Call io.Fonts->AddFontFromFileTTF() manually to load extra character ranges. "
-        //     "Read docs/FONTS.md for details.");
-        // ImGui::Text("Hiragana: \xe3\x81\x8b\xe3\x81\x8d\xe3\x81\x8f\xe3\x81\x91\xe3\x81\x93 (kakikukeko)");
-        // ImGui::Text("Kanjis: \xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e (nihongo)");
-        // static char buf[32] = "\xe6\x97\xa5\xe6\x9c\xac\xe8\xaa\x9e";
-        // ImGui::InputText("UTF-8 input", buf, IM_ARRAYSIZE(buf));
-        // ImGui::End();
     });
 
     RenderModule::RegisterImGuiCallback([&]() {
         ImGui::Begin("Grid Map Viewer");
-        // ImGui::Text("Grid Map Metadata:");
         ImGui::Text("Width: %d, Height: %d, Resolution: %.2f m/pixel", map_metadata.width, map_metadata.height, map_metadata.resolution);
-        // ImGui::Text("Origin: (%.2f, %.2f)", map_metadata.origin_x, map_metadata.origin_y);
         ImGui::Text("Square count: %d", square_count);
-        // ImGui::Text("FPS: %.2f", RenderModule::GetFPS());
-        // ImGui::Text(" ");
-        // ImGui::NewLine();
         ImGui::Separator();
         ImGui::End();
     });
@@ -340,7 +355,8 @@ int main() {
                 if (pose_set) {
                     pose_start_interaction_state = PoseInteractionState::kInactive;
                     RenderContext::Instance().disableViewportControls = false;
-                    std::cout << "Start Pose: (" << start.x << ", " << start.y << ", " << start.theta << ")\n";
+                    std::cout << "Start Pose set.\n";
+                    // std::cout << "Start Pose: (" << start.x << ", " << start.y << ", " << start.theta << ")\n";
                 }
             }
             {
@@ -348,11 +364,14 @@ int main() {
                 if (pose_set) {
                     pose_end_interaction_state = PoseInteractionState::kInactive;
                     RenderContext::Instance().disableViewportControls = false;
-                    std::cout << "End Pose: (" << end.x << ", " << end.y << ", " << end.theta << ")\n";
+                    std::cout << "End Pose set.\n";
+                    // std::cout << "End Pose: (" << end.x << ", " << end.y << ", " << end.theta << ")\n";
                 }
             }
 
             RenderModule::ZoomView([&](NVGcontext* vg) {
+                ZoomView::SetOffset(ImVec2(65, 50), ZoomView::Flags::kOnceOnly);
+                // ZoomView::SetScale(3.0f, ZoomView::Flags::kOnceOnly);
                 /* Render Pre-Computed Background */
                 // nvg::BeginPath();
                 // nvg::Rect(0, 0, fb_width, fb_height);
@@ -362,31 +381,26 @@ int main() {
 
                 /* Transform once from canvas to view */
                 if (start.active && !start.transformed) {
-                    std::cout << "Transforming start pose to view coordinates.\n";
                     ZoomView::CanvasToView(start.x, start.y);
                     ZoomView::CanvasToView(start.dx);
                     ZoomView::CanvasToView(start.dy);
                     start.transformed = true;
-                    std::cout << "Transformed Start Pose: (" << start.x << ", " << start.y << ", " << start.theta << ")\n";
+                    std::cout << "Start Pose: (" << start.x << ", " << start.y << ", " << start.theta << ")\n";
                 }
                 if (end.active && !end.transformed) {
-                    std::cout << "Transforming end pose to view coordinates.\n";
                     ZoomView::CanvasToView(end.x, end.y);
                     ZoomView::CanvasToView(end.dx);
                     ZoomView::CanvasToView(end.dy);
                     end.transformed = true;
-                    std::cout << "Transformed End Pose: (" << end.x << ", " << end.y << ", " << end.theta << ")\n";
+                    std::cout << "End Pose: (" << end.x << ", " << end.y << ", " << end.theta << ")\n";
                 }
 
-                if (start.transformed) {
-                    paint_pose(vg, start);
-                }
-                if (end.transformed) {
-                    paint_pose(vg, end, true);
+                if (start.active && start.transformed && end.active && end.transformed) {
+                    run_a_star();
                 }
 
-                static std::vector<float> x_coords;
-                static std::vector<float> y_coords;
+
+                /* Rener Squares */
                 if (toggle || step) {
                     // nvg::GLUtilsBindFramebuffer(fb);
                     // glad::glViewport(0, 0, fb_width, fb_height);
@@ -407,6 +421,15 @@ int main() {
                     nvg::Rect(x_coords[i], y_coords[i], px_per_cell*test, px_per_cell*test);
                     nvg::FillColor(nvg::RGBAf(1.0f, 0.0f, 0.0f, 1.0f));
                     nvg::Fill();
+                }
+
+
+
+                if (start.transformed) {
+                    paint_pose(vg, start);
+                }
+                if (end.transformed) {
+                    paint_pose(vg, end, true);
                 }
 
             });
