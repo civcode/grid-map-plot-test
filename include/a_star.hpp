@@ -71,6 +71,8 @@ public:
 
   struct CompareNode {
     bool operator()(const Node *lhs, const Node *rhs) const {
+      if (lhs->fCost() == rhs->fCost())
+        return lhs->hCost > rhs->hCost; // Prefer closer to goal
       return lhs->fCost() > rhs->fCost();
     }
   };
@@ -115,9 +117,11 @@ public:
           auto successor = std::make_unique<Node>(newCoordinates, currentNode);
           successor->gCost = newGCost;
           successor->hCost = heuristic(successor->coordinates, goal);
+          Node* rawPtr = successor.get();
 
-          openSet.push(successor.get());
           allNodes[newCoordinates] = std::move(successor);
+          // openSet.push(successor.get());
+          openSet.push(rawPtr);
         }
       }
     }

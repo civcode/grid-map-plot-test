@@ -157,7 +157,7 @@ int main() {
     int grid_height = height * px_per_cell;
     std::cout << "Grid size: " << grid_width << "x" << grid_height << "\n";
 
-    RenderModule::Init(1500, 1200, 2.0);
+    RenderModule::Init(1500, 1200, 0.0);
     RenderModule::EnableRootWindowDocking();
     RenderModule::EnableDebugConsole();
     RenderModule::Console().SetCoutRedirect(true);
@@ -288,7 +288,7 @@ int main() {
             if (occupancy_grid[i] != 0) {
                 int x = i % map_metadata.width;
                 int y = i / map_metadata.width;
-                a_star.setWall(x, 100-y);
+                a_star.setWall(x, 99-y);
                 // std::cout << "Setting wall at (" << x << ", " << y << ")\n";
             }
         }
