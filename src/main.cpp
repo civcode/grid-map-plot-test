@@ -7,14 +7,8 @@
 #define STB_IMAGE_RESIZE_IMPLEMENTATION
 #include "stb_image_resize2.h"
 
-// #define NANOVG_GL3_IMPLEMENTATION
-// #include <GLFW/glfw3.h>
-// #include "nanovg.h"
-// #include "nanovg_gl.h"
-// #include "nanovg_gl_utils.h"
-
 #include "render_module/render_module.hpp" 
-
+#include "render_module/glad_wrapper.hpp"
 
 
 enum class PoseInteractionState {
@@ -78,6 +72,7 @@ bool HandlePoseInteractionStateMachine(Pose& pose,
                 if (hovering && active && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
                     pose.dx += delta.x;
                     pose.dy -= delta.y;  // Flip Y
+                    pose.theta = atan2(pose.dy, pose.dx);
                 }
 
                 if (ImGui::IsMouseReleased(ImGuiMouseButton_Left)) {
@@ -94,25 +89,6 @@ bool HandlePoseInteractionStateMachine(Pose& pose,
         }
 
         if (state == PoseInteractionState::kAwaitingDragDirection) {
-            // std::cout << "Dragging direction: (" 
-                    //   << pose.dx << ", " << pose.dy << ")\n";
-            // Draw the pose direction lineoL
-            // nvg::BeginPath();
-            // nvg::MoveTo(pose.x, pose.y);
-            // nvg::LineTo(pose.x + pose.dx, pose.y + pose.dy);
-            // nvg::StrokeColor(nvg::RGBAf(0.3f, 0.3f, 0.3f, 1.0f));
-            // nvg::StrokeWidth(2.0f);
-            // nvg::Stroke();
-            // // nvg::BeginPath();
-            // // nvg::Circle(start.x, start.y, 5.0f);
-            // // nvg::FillColor(nvg::RGBAf(0.3f, 0.3f, 0.3f, 1.0f));
-            // // nvg::Fill();
-            // nvg::BeginPath();
-            // // nvg::Circle(start.x + start.dx, start.y + start.dy, 5.0f);
-            // nvg::Circle(pose.x, pose.y, 5.0f);
-            // // nvg::ClosePath();
-            // nvg::FillColor(nvg::RGBAf(0.0f, 1.0f, 0.0f, 1.0f));
-            // nvg::Fill();
 
         }
     }
@@ -180,8 +156,10 @@ int main() {
     int grid_height = height * px_per_cell;
     std::cout << "Grid size: " << grid_width << "x" << grid_height << "\n";
 
-    RenderModule::Init(1400, 1200, 0.0);
+    RenderModule::Init(1500, 1200, 0.0);
     RenderModule::EnableRootWindowDocking();
+    RenderModule::EnableDebugConsole();
+    RenderModule::Console().SetCoutRedirect(true);
 
 
     /* Create a FB and draw to it */
@@ -261,99 +239,6 @@ int main() {
     };
     render_grid_map();
 
-    // nvg::GLUtilsBindFramebuffer(fb);
-    // glad::glViewport(0, 0, fb_width, fb_height);
-    // glad::glClearColor(0, 0, 0, 0);
-    // glad::glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-
-    // /* Draw Grid Map */
-    // nvg::BeginFrame(fb_width, fb_height, 1.0f);
-
-    //     nvg::BeginPath();
-    //     nvg::Rect(0, 0, static_cast<float>(grid_width), static_cast<float>(grid_height));
-    //     nvg::FillColor(nvg::RGBAf(1.0f, 1.0f, 1.0f, 1.0f));
-    //     nvg::Fill();
-
-    //     for (int i = 0; i < width * height; ++i) {
-    //         int x = (i % width) * px_per_cell;
-    //         int y = (i / width) * px_per_cell;
-    //         y = grid_height - y - px_per_cell; // Invert y-axis for correct rendering
-    //         int8_t value = occupancy_grid.get()[i];
-    //         if (value == 0) {
-    //             continue;
-    //         }
-    //         nvg::BeginPath();
-    //         nvg::Rect(static_cast<float>(x), static_cast<float>(y), static_cast<float>(px_per_cell), static_cast<float>(px_per_cell));
-    //         nvg::FillColor(nvg::RGBAf(0.6f, 0.6f, 0.6f, 1.0f));
-    //         nvg::Fill();
-    //     }
-
-    //     nvg::BeginPath();
-    //     // draw grid lines
-    //     for (int i = 0; i <= grid_width; i+=px_per_cell) {
-    //         nvg::MoveTo(i, 0);
-    //         nvg::LineTo(i, grid_height);
-    //     }
-    //     for (int i = 0; i <= grid_height; i+=px_per_cell) {
-    //         nvg::MoveTo(0, i);
-    //         nvg::LineTo(grid_width, i);
-    //     }
-    //     nvg::StrokeColor(nvg::RGBAf(0.2f, 0.2f, 0.2f, 0.6f));
-    //     nvg::StrokeWidth(0.8f);
-    //     nvg::Stroke();
-
-    // nvg::EndFrame();
-    // nvg::GLUtilsBindFramebuffer(nullptr); 
-        
-    // NVGpaint img_paint = nvg::ImagePattern(0, 0, fb_width, fb_height, 0, fb->image, 1.0f);
-    // if (img_paint.image == 0) {
-    //     std::cerr << "Failed to create image pattern." << std::endl;
-    //     return -1;
-    // }
-    
-    // RenderModule::RegisterNanoVGCallback("Red Circle", [&](NVGcontext* vg) {
-    //     nvgBeginPath(vg);
-    //     nvgRect(vg, 0, 0, 200, 200);
-    //     nvgFillPaint(vg, img_paint);
-    //     nvgFill(vg);
-    //     nvgClosePath(vg);
-
-    //     nvg::GLUtilsBindFramebuffer(fb);
-    //     glad::glViewport(0, 0, fb_width, fb_height);
-    //     // glad::glClearColor(0, 0, 0, 0);
-    //     // glad::glClear(GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-    //     // nvgSave(vg);
-    //     // nvgluBindFramebuffer(fb);
-    //     nvgBeginFrame(vg, fb_width, fb_height, 1.0f);
-    //     nvgBeginPath(vg);
-    //     static float cx = 10;
-    //     static float cy = 10;
-    //     static float dx = 0.5f;
-    //     nvgCircle(vg, cx, cy, 5);
-    //     cx += dx;
-    //     cy += dx;
-    //     nvgFillColor(vg, nvgRGBA(255, 0, 0, 155));
-    //     nvgFill(vg);
-    //     nvgClosePath(vg);
-    //     nvgEndFrame(vg);
-    //     nvgluBindFramebuffer(NULL);
-    //     // nvgRestore(vg);
-    // });
-
-    // NVGLUframebuffer *fb = nvgluCreateFramebuffer(vg, grid_width, grid_height, NVG_IMAGE_REPEATX | NVG_IMAGE_REPEATY);
-    // if (!fb) {
-    //     std::cerr << "Failed to create framebuffer\n";
-    //     return 1;
-    // }
-    // nvgluBindFramebuffer(fb);
-
-    // nvgBeginPath(vg);
-    // nvgCircle(vg, width/2, height/2, 50);
-    // nvgFillColor(vg, nvgRGBA(255, 0, 0, 255));
-    // nvgFill(vg);
-
-    // nvgluBindFramebuffer(nullptr);
-
 
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -368,10 +253,11 @@ int main() {
     bool step = false;
 
     Pose start;
-    Pose stop;
-    PoseInteractionState pose_interaction_state = PoseInteractionState::kInactive;
+    Pose end;
+    PoseInteractionState pose_start_interaction_state = PoseInteractionState::kInactive;
+    PoseInteractionState pose_end_interaction_state = PoseInteractionState::kInactive;
 
-    auto paint_pose = [&](NVGcontext* vg, const Pose& pose) {
+    auto paint_pose = [&](NVGcontext* vg, const Pose& pose, bool is_end = false) {
         nvg::BeginPath();
         nvg::MoveTo(pose.x, pose.y);
         nvg::LineTo(pose.x + pose.dx, pose.y + pose.dy);
@@ -379,8 +265,12 @@ int main() {
         nvg::StrokeWidth(2.0f);
         nvg::Stroke();
         nvg::BeginPath();
-        nvg::Circle(pose.x, pose.y, 5.0f);
-        nvg::FillColor(nvg::RGBAf(0.0f, 1.0f, 0.0f, 1.0f));
+        nvg::Circle(pose.x, pose.y, 4.0f);
+        if (!is_end) {
+            nvg::FillColor(nvg::RGBAf(0.0f, 1.0f, 0.0f, 1.0f));
+        } else {
+            nvg::FillColor(nvg::RGBAf(1.0f, 0.0f, 0.0f, 1.0f));
+        }
         nvg::Fill();
     };
 
@@ -401,12 +291,12 @@ int main() {
             render_grid_map();
         }
         if (ImGui::Button("Start Pose")) {
-            pose_interaction_state = PoseInteractionState::kAwaitingStartClick;
-            // start = Pose(); // Reset start pose
+            pose_start_interaction_state = PoseInteractionState::kAwaitingStartClick;
             RenderContext::Instance().disableViewportControls = true;
         }
         if (ImGui::Button("End Pose")) {
-            // Start pose logic here
+            pose_end_interaction_state = PoseInteractionState::kAwaitingStartClick;
+            RenderContext::Instance().disableViewportControls = true;
         }
         ImGui::End();
 
@@ -425,28 +315,38 @@ int main() {
 
     RenderModule::RegisterImGuiCallback([&]() {
         ImGui::Begin("Grid Map Viewer");
-        ImGui::Text("Grid Map Metadata:");
+        // ImGui::Text("Grid Map Metadata:");
         ImGui::Text("Width: %d, Height: %d, Resolution: %.2f m/pixel", map_metadata.width, map_metadata.height, map_metadata.resolution);
-        ImGui::Text("Origin: (%.2f, %.2f)", map_metadata.origin_x, map_metadata.origin_y);
+        // ImGui::Text("Origin: (%.2f, %.2f)", map_metadata.origin_x, map_metadata.origin_y);
         ImGui::Text("Square count: %d", square_count);
-        ImGui::Text("FPS: %.2f", RenderModule::GetFPS());
-        ImGui::Text(" ");
+        // ImGui::Text("FPS: %.2f", RenderModule::GetFPS());
+        // ImGui::Text(" ");
+        // ImGui::NewLine();
+        ImGui::Separator();
         ImGui::End();
     });
 
     RenderModule::RegisterNanoVGCallback("Grid Map Viewer", 
         /* Render */
         [&](NVGcontext* vg) {
-            // std::cout << "fps = " << RenderModule::GetFPS() << std::endl;
 
             ImVec2 canvasPos = ImGui::GetCursorScreenPos();
             ImVec2 canvasSize = ImGui::GetContentRegionAvail();
-            bool pose_set = HandlePoseInteractionStateMachine(start, pose_interaction_state, canvasPos, canvasSize);
-            if (pose_set) {
-                pose_interaction_state = PoseInteractionState::kInactive;
-                RenderContext::Instance().disableViewportControls = false;
-                std::cout << "Start Pose Set: (" << start.x << ", " << start.y << ", " << start.dx << ", " << start.dy << ")\n";
-
+            {
+                bool pose_set = HandlePoseInteractionStateMachine(start, pose_start_interaction_state, canvasPos, canvasSize);
+                if (pose_set) {
+                    pose_start_interaction_state = PoseInteractionState::kInactive;
+                    RenderContext::Instance().disableViewportControls = false;
+                    std::cout << "Start Pose: (" << start.x << ", " << start.y << ", " << start.theta << ")\n";
+                }
+            }
+            {
+                bool pose_set = HandlePoseInteractionStateMachine(end, pose_end_interaction_state, canvasPos, canvasSize);
+                if (pose_set) {
+                    pose_end_interaction_state = PoseInteractionState::kInactive;
+                    RenderContext::Instance().disableViewportControls = false;
+                    std::cout << "End Pose: (" << end.x << ", " << end.y << ", " << end.theta << ")\n";
+                }
             }
 
             RenderModule::ZoomView([&](NVGcontext* vg) {
@@ -464,13 +364,22 @@ int main() {
                     ZoomView::CanvasToView(start.dx);
                     ZoomView::CanvasToView(start.dy);
                     start.transformed = true;
-                    std::cout << "Transformed Start Pose: (" 
-                              << start.x << ", " << start.y << ", " 
-                              << start.dx << ", " << start.dy << ")\n";
+                    std::cout << "Transformed Start Pose: (" << start.x << ", " << start.y << ", " << start.theta << ")\n";
+                }
+                if (end.active && !end.transformed) {
+                    std::cout << "Transforming end pose to view coordinates.\n";
+                    ZoomView::CanvasToView(end.x, end.y);
+                    ZoomView::CanvasToView(end.dx);
+                    ZoomView::CanvasToView(end.dy);
+                    end.transformed = true;
+                    std::cout << "Transformed End Pose: (" << end.x << ", " << end.y << ", " << end.theta << ")\n";
                 }
 
                 if (start.transformed) {
                     paint_pose(vg, start);
+                }
+                if (end.transformed) {
+                    paint_pose(vg, end, true);
                 }
 
                 static std::vector<float> x_coords;
@@ -500,8 +409,11 @@ int main() {
             });
 
             /* Paint orientation during interactions */
-            if (pose_interaction_state == PoseInteractionState::kAwaitingDragDirection) {
+            if (pose_start_interaction_state == PoseInteractionState::kAwaitingDragDirection) {
                 paint_pose(vg, start);
+            }
+            if (pose_end_interaction_state == PoseInteractionState::kAwaitingDragDirection) {
+                paint_pose(vg, end, true);
             }
 
 
